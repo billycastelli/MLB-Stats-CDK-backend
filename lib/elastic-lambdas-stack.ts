@@ -1,18 +1,82 @@
-import * as sns from '@aws-cdk/aws-sns';
-import * as subs from '@aws-cdk/aws-sns-subscriptions';
-import * as sqs from '@aws-cdk/aws-sqs';
-import * as cdk from '@aws-cdk/core';
+import * as cdk from "@aws-cdk/core";
+import * as ssm from "@aws-cdk/aws-ssm";
+import lambda = require("@aws-cdk/aws-lambda");
+import apigateway = require("@aws-cdk/aws-apigateway");
 
 export class ElasticLambdasStack extends cdk.Stack {
-  constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+    constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+        super(scope, id, props);
 
-    const queue = new sqs.Queue(this, 'ElasticLambdasQueue', {
-      visibilityTimeout: cdk.Duration.seconds(300)
-    });
+        // Create a lambda function, associate with js file
+        const getBattingStats = new lambda.Function(this, "getBattingStatsLambda", {
+            code: new lambda.AssetCode("src"),
+            handler: "battingStats.getBattingStats",
+            runtime: lambda.Runtime.NODEJS_12_X,
+            timeout: cdk.Duration.seconds(100),
+            environment: {
+                ELASTIC_IP: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_IP"),
+                ELASTIC_USERNAME: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_USERNAME"),
+                ELASTIC_PASSWORD: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_PASSWORD"),
+                
+            },
+        });
 
-    const topic = new sns.Topic(this, 'ElasticLambdasTopic');
+        // Create API Gateway resource
+        const api = new apigateway.RestApi(this, "baseballAPI", {
+            restApiName: "Baseball Stats REST API",
+        });
+        
+        // Set up /batting endpoint
+        const batting = api.root.addResource("batting");
+        const getBatting = batting.addResource("{playerId}");
+        
+        // Set up /users/<username> endpoint
+        // const singleUser = users.addResource("{username}");
+    
+        // Set up apiGateway/lambda integrations
+        const getBattingIntegration = new apigateway.LambdaIntegration(getBattingStats);
 
-    topic.addSubscription(new subs.SqsSubscription(queue));
-  }
+        // Associate each integration with HTTP verb
+        getBatting.addMethod("GET", getBattingIntegration)
+    }
+}
+
+export function addCorsOptions(apiResource: apigateway.IResource) {
+    apiResource.addMethod(
+        "OPTIONS",
+        new apigateway.MockIntegration({
+            integrationResponses: [
+                {
+                    statusCode: "200",
+                    responseParameters: {
+                        "method.response.header.Access-Control-Allow-Headers":
+                            "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                        "method.response.header.Access-Control-Allow-Origin":
+                            "'*'",
+                        "method.response.header.Access-Control-Allow-Credentials":
+                            "'false'",
+                        "method.response.header.Access-Control-Allow-Methods":
+                            "'OPTIONS,GET,PUT,POST,DELETE'",
+                    },
+                },
+            ],
+            passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
+            requestTemplates: {
+                "application/json": '{"statusCode": 200}',
+            },
+        }),
+        {
+            methodResponses: [
+                {
+                    statusCode: "200",
+                    responseParameters: {
+                        "method.response.header.Access-Control-Allow-Headers": true,
+                        "method.response.header.Access-Control-Allow-Methods": true,
+                        "method.response.header.Access-Control-Allow-Credentials": true,
+                        "method.response.header.Access-Control-Allow-Origin": true,
+                    },
+                },
+            ],
+        }
+    );
 }
