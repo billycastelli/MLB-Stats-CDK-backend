@@ -17,9 +17,21 @@ export class ElasticLambdasStack extends cdk.Stack {
                 ELASTIC_IP: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_IP"),
                 ELASTIC_USERNAME: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_USERNAME"),
                 ELASTIC_PASSWORD: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_PASSWORD"),
-                
             },
         });
+        
+        // Create a lambda function, associate with js file
+        const searchPlayers = new lambda.Function(this, "searchPlayers", {
+            code: new lambda.AssetCode("src"),
+            handler: "search.searchPlayers",
+            runtime: lambda.Runtime.NODEJS_12_X,
+            timeout: cdk.Duration.seconds(100),
+            environment: {
+                ELASTIC_IP: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_IP"),
+                ELASTIC_USERNAME: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_USERNAME"),
+                ELASTIC_PASSWORD: ssm.StringParameter.valueFromLookup(this, "ELASTIC_BASEBALL_PASSWORD"),
+            },
+        });        
 
         // Create API Gateway resource
         const api = new apigateway.RestApi(this, "baseballAPI", {
@@ -30,14 +42,17 @@ export class ElasticLambdasStack extends cdk.Stack {
         const batting = api.root.addResource("batting");
         const getBatting = batting.addResource("{playerId}");
         
-        // Set up /users/<username> endpoint
-        // const singleUser = users.addResource("{username}");
+        // Set up /search endpoint
+        const search = api.root.addResource("search");
     
         // Set up apiGateway/lambda integrations
         const getBattingIntegration = new apigateway.LambdaIntegration(getBattingStats);
+        const searchPlayersIntegration = new apigateway.LambdaIntegration(searchPlayers);
 
         // Associate each integration with HTTP verb
-        getBatting.addMethod("GET", getBattingIntegration)
+        getBatting.addMethod("GET", getBattingIntegration);
+        search.addMethod("POST", searchPlayersIntegration);
+
     }
 }
 
