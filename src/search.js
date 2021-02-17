@@ -12,23 +12,19 @@ const client = new Client({
 
 // Lambda function associated with /search endpoint
 const searchPlayers = async (event) => {
-    let name_input;
-    try {
-        name_input = JSON.parse(event.body).name_input;
-    }
-    catch(e){
-        return {
-            statusCode: 200,
-            body: JSON.stringify("No name_input found in body"),
-        };
-    }
+    const event_body = JSON.parse(event.body);
+    let name_input = event_body.name_input;
+    let result_size = event_body.result_size;
+    let starting_index = event_body.starting_index;
     
     const { body } = await client.search({
         index: "baseball",
         body: {
+            "from": parseInt(starting_index),
+            "size": parseInt(result_size),
             query: {
                 match: {
-                    "player.name": { query: name_input, fuzziness: "AUTO" },
+                    "player.name": { query: name_input, fuzziness: "AUTO", operator: "OR" },
                 },
             },
         },
@@ -36,9 +32,14 @@ const searchPlayers = async (event) => {
     
     const response = {
         statusCode: 200,
-        body: JSON.stringify(body.hits.hits),
+        body: JSON.stringify(body.hits),
+        headers: {
+            "Access-Control-Allow-Headers" : "Content-Type",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+        },           
     };
-        return response;
+    return response;
 };
 
 module.exports = { searchPlayers };

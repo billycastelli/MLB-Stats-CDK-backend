@@ -43,6 +43,11 @@ const getBattingStats = async (event) => {
     const response = {
         statusCode: 200,
         body: JSON.stringify(player),
+        headers: {
+            "Access-Control-Allow-Headers" : "Content-Type",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "OPTIONS,GET"
+        },        
     };
     return response;
 };
