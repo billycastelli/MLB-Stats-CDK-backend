@@ -41,9 +41,12 @@ export class ElasticLambdasStack extends cdk.Stack {
         // Set up /batting endpoint
         const batting = api.root.addResource("batting");
         const getBatting = batting.addResource("{playerId}");
+        addCorsOptions(getBatting);
         
         // Set up /search endpoint
         const search = api.root.addResource("search");
+        addCorsOptions(search);
+
     
         // Set up apiGateway/lambda integrations
         const getBattingIntegration = new apigateway.LambdaIntegration(getBattingStats);
