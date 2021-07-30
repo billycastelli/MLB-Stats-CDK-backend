@@ -6,13 +6,20 @@ The [/lib/elastic-lambdas-stack.ts](lib/elastic-lambdas-stack.ts) file defines t
 
 Lambda functions are defined in the `/src` folder.
 
-## Useful commands
+## Routes
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
- 
- Note: When changes are made to the stack definition, run `npm run build` prior to `cdk deploy`. 
+1. `GET /batting/<playerid>`
+
+- Returns of a data dump of all batting stats associated with the `playerid`. 
+
+
+2. `POST /search`
+
+- Example payload (Page 1)
+```
+{
+    "name_input": "Babe Ruth", 
+    "result_size": 20,
+    "starting_index": 0
+}
+```
